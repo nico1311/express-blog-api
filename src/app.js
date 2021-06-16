@@ -4,7 +4,12 @@ const express = require('express'),
   logger = require('morgan'),
   consola = require('consola');
 
-const indexRouter = require('./routes/index');
+const { sequelize } = require('./db');
+const Category = require('./db/models/Category');
+const Post = require('./db/models/Post');
+
+const indexRouter = require('./routes/index'),
+  apiRouter = require('./routes/api');
 
 const app = express();
 
@@ -17,12 +22,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+// models setup
+Category.init(sequelize);
+Post.init(sequelize);
+
+Category.hasMany(Post, {
+  foreignKey: 'categoryId'
+});
+
+Post.belongsTo(Category, {
+  foreignKey: 'categoryId'
+});
+
 // Routes
 app.use('/', indexRouter);
+app.use('/api', apiRouter);
 
 const setup = async () => {
-  // TODO: implement database connection
-  return Promise.resolve();
+  await sequelize.authenticate();
+  await Category.sync();
+  await Post.sync();
 };
 
 module.exports = {

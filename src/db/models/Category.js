@@ -12,8 +12,7 @@ class Category extends Model {
       },
     }, {
       modelName: 'category',
-      timestamps: true,
-      updatedAt: false,
+      timestamps: false,
       sequelize
     });
   }

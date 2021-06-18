@@ -43,8 +43,12 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    const posts = await Post.findAll({
-      include: Category
+    let posts = await Post.findAll({
+      attributes: {
+        exclude: ['content']
+      },
+      include: Category,
+      order: [['createdAt', 'DESC']]
     });
 
     res.status(200).json({
@@ -81,8 +85,96 @@ const getPost = async (req, res) => {
   }
 }
 
+const updatePost = async (req, res) => {
+  const schema = Joi.object({
+    title: Joi.string().max(255).optional(),
+    content: Joi.string().optional(),
+    imageUrl: Joi.string().max(2048).regex(/(https?:\/\/.*\.(?:png|jpg|gif|webp))/i).optional(),
+    category: Joi.string().optional()
+  });
+
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (Number.isNaN(postId)) return res.status(404).json({
+      error: 'Post not found'
+    });
+
+    const post = await Post.findByPk(postId, {
+      include: Category
+    });
+
+    if (!post) return res.status(404).json({
+      error: 'Post not found'
+    });
+
+    let values = await schema.validateAsync(req.body);
+
+    let category;
+    if (values.category) {
+      [category] = await Category.findOrCreate({
+        where: {
+          name: values.category.trim()
+        }
+      });
+      post.setCategory(category);
+    }
+
+    Object.keys(values).forEach((key) => {
+      if (key !== 'category') {
+        post[key] = values[key];
+      }
+    });
+
+    await post.save();
+
+    const responseData = category ? {
+      ...post.dataValues,
+      category
+    } : post;
+
+    res.status(200).json(responseData);
+  } catch (err) {
+    if (err.details) { // validation error
+      res.status(422).json({
+        errors: err.details
+      });
+    } else {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+}
+
+const deletePost = async (req, res) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (Number.isNaN(postId)) return res.status(404).json({
+      error: 'Post not found'
+    });
+
+    const post = await Post.findByPk(postId, {
+      include: Category
+    });
+
+    if (!post) return res.status(404).json({
+      error: 'Post not found'
+    });
+
+    await post.destroy();
+
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    })
+  }
+}
+
 module.exports = {
   createPost,
   getAllPosts,
-  getPost
+  getPost,
+  updatePost,
+  deletePost
 }

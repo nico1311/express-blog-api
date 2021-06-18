@@ -2,7 +2,10 @@ const express = require('express'),
   cookieParser = require('cookie-parser'),
   cors = require('cors'),
   logger = require('morgan'),
-  consola = require('consola');
+  consola = require('consola'),
+  swaggerUI = require('swagger-ui-express');
+
+const swaggerSpec = require('./swagger');
 
 const { sequelize } = require('./db');
 const Category = require('./db/models/Category');
@@ -37,6 +40,7 @@ Post.belongsTo(Category, {
 // Routes
 app.use('/', indexRouter);
 app.use('/api', apiRouter);
+app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
 const setup = async () => {
   await sequelize.authenticate();
